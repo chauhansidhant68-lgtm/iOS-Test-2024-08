@@ -1,0 +1,29 @@
+name: iOS 2026 Build Engine
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create App Package
+        run: |
+          # This script manually creates a structure that iOS signers can recognize
+          mkdir -p Payload/Engine.app
+          
+          # Move your Swift and logic files into the app container
+          cp *.swift Payload/Engine.app/ 2>/dev/null || true
+          cp *.hpp Payload/Engine.app/ 2>/dev/null || true
+          cp *.json Payload/Engine.app/ 2>/dev/null || true
+          
+          # Create the Info.plist that tells iOS the app is legit
+          echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleExecutable</key><string>Engine</string><key>CFBundleIdentifier</key><string>com.fox.regedit</string><key>CFBundleName</key><string>Regedit2026</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleShortVersionString</key><string>1.0</string></dict></plist>' > Payload/Engine.app/Info.plist
+          
+          zip -r Regedit_2026.ipa Payload
+          
+      - name: Upload Finished IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Regedit-Engine-File
+          path: Regedit_2026.ipa
