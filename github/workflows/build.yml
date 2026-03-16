@@ -1,0 +1,18 @@
+name: iOS Build Engine
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build IPA
+        run: |
+          # Professional build script for 2026
+          mkdir -p App.app
+          cp *.swift App.app/
+          zip -r Final_Regedit.ipa App.app
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Final_Regedit_IPA
+          path: Final_Regedit.ipa
