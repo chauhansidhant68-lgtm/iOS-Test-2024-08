@@ -1,29 +1,68 @@
-name: iOS 2026 Build Engine
+name: iOS 2026 True Compiler
 on: [push, workflow_dispatch]
-
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Create App Package
+      - name: Install Pro Compiler Tools
+        run: brew install xcodegen
+          
+      - name: Generate iOS Ignition File
         run: |
-          # This script manually creates a structure that iOS signers can recognize
-          mkdir -p Payload/Engine.app
+          # This writes the core boot file iOS needs to launch your dashboard
+          cat << 'EOF' > App.swift
+          import SwiftUI
+          @main
+          struct RegeditApp: App {
+              var body: some Scene {
+                  WindowGroup {
+                      MainViewWrapper().ignoresSafeArea()
+                  }
+              }
+          }
+          struct MainViewWrapper: UIViewControllerRepresentable {
+              func makeUIViewController(context: Context) -> MainViewController {
+                  return MainViewController()
+              }
+              func updateUIViewController(_ uiViewController: MainViewController, context: Context) {}
+          }
+          EOF
           
-          # Move your Swift and logic files into the app container
-          cp *.swift Payload/Engine.app/ 2>/dev/null || true
-          cp *.hpp Payload/Engine.app/ 2>/dev/null || true
-          cp *.json Payload/Engine.app/ 2>/dev/null || true
+      - name: Generate Master Xcode Blueprint
+        run: |
+          # This creates the .xcodeproj file dynamically without needing a PC
+          cat << 'EOF' > project.yml
+          name: Engine
+          options:
+            bundleIdPrefix: com.fox
+          targets:
+            Engine:
+              type: application
+              platform: iOS
+              deploymentTarget: "15.0"
+              sources:
+                - path: .
+                  excludes: [".github"]
+              settings:
+                CODE_SIGNING_ALLOWED: NO
+                CODE_SIGNING_REQUIRED: NO
+          EOF
+          xcodegen generate
           
-          # Create the Info.plist that tells iOS the app is legit
-          echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleExecutable</key><string>Engine</string><key>CFBundleIdentifier</key><string>com.fox.regedit</string><key>CFBundleName</key><string>Regedit2026</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleShortVersionString</key><string>1.0</string></dict></plist>' > Payload/Engine.app/Info.plist
+      - name: Compile Real Executable Binary
+        run: |
+          # Uses Apple's official compiler to build the actual application
+          xcodebuild archive -project Engine.xcodeproj -scheme Engine -configuration Release -archivePath build/Engine.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
           
-          zip -r Regedit_2026.ipa Payload
+          # Packages the compiled executable into the final IPA
+          mkdir -p Payload
+          cp -r build/Engine.xcarchive/Products/Applications/*.app Payload/
+          zip -r Regedit_Compiled_2026.ipa Payload
           
-      - name: Upload Finished IPA
+      - name: Upload Installable App
         uses: actions/upload-artifact@v4
         with:
-          name: Regedit-Engine-File
-          path: Regedit_2026.ipa
+          name: Regedit-Compiled-IPA
+          path: Regedit_Compiled_2026.ipa
